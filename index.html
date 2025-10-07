@@ -1,1117 +1,250 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Zenith Stock Exchange — Multi-User</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-/* Basic reset + fonts */
-:root{
---bg1: #f8fafc;
---card: #ffffff;
---muted: #64748b;
---green: #16a34a;
---red: #ef4444;
---accent: #0ea5e9;
---page-bg: linear-gradient(180deg,#f1f5f9 0%,#ffffff 100%);
-}
-html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
-body{
-background: var(--page-bg);
-padding:20px;
-color:#0f172a;
--webkit-font-smoothing:antialiased;
--moz-osx-font-smoothing:grayscale;
-}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zenith Stock Exchange</title>
 
-/* Container */
-.container{max-width:1200px;margin:0 auto;}
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
-header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:18px}
-h1{font-size:28px;margin:0}
-.meta{display:flex;gap:16px;align-items:center}
-
-/* Controls */
-select, button, input[type="number"], input[type="text"], input[type="password"]{padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px}
-button.primary{background:#0f172a;color:white;border:none;cursor:pointer}
-button.ghost{background:transparent;border:1px solid #cbd5e1;cursor:pointer}
-button.danger{background:#ef4444;color:white;border:none;cursor:pointer}
-button.success{background:#16a34a;color:white;border:none;cursor:pointer}
-
-main{display:grid;grid-template-columns:1fr 320px;gap:18px}
-
-/* Left area with cards */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-.card{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 6px 18px rgba(15,23,42,0.06);cursor:pointer;transition:transform .18s,box-shadow .18s}
-.card:hover{transform:translateY(-4px);box-shadow:0 10px 30px rgba(15,23,42,0.08)}
-.row{display:flex;align-items:center;justify-content:space-between}
-.symbol{font-weight:700;font-size:16px}
-.name{color:var(--muted);font-size:13px;margin-left:8px}
-.price{font-size:20px;margin-top:8px;font-weight:700}
-.small{font-size:12px;color:var(--muted)}
-.spark{width:160px;height:60px}
-
-/* expanded details */
-.expanded{margin-top:12px;border-top:1px dashed #eef2f7;padding-top:12px}
-.btn-buy{background:#16a34a;color:white;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
-.btn-buy:hover{opacity:.95}
-.btn-buy-secondary{background:#059669;color:white;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
-.qty{width:90px}
-
-/* Right column */
-aside .panel{background:var(--card);padding:14px;border-radius:16px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
-.invest-list{margin-top:10px}
-.invest-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9}
-.muted{color:var(--muted)}
-
-/* Login Screen */
-.login-screen{
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:80vh;
-}
-.login-box{
-background:var(--card);
-padding:32px;
-border-radius:16px;
-box-shadow:0 10px 40px rgba(15,23,42,0.1);
-width:100%;
-max-width:400px;
-}
-.login-box h2{margin:0 0 20px 0;text-align:center}
-.form-group{margin-bottom:16px}
-.form-group label{display:block;margin-bottom:6px;font-weight:600;font-size:14px}
-.form-group input{width:100%;box-sizing:border-box}
-.form-group button{width:100%;padding:12px;font-size:16px}
-
-/* Admin Panel */
-.admin-panel{background:var(--card);padding:20px;border-radius:16px;box-shadow:0 6px 18px rgba(15,23,42,0.06);margin-bottom:20px}
-.admin-section{margin-bottom:24px}
-.admin-section h3{margin:0 0 12px 0;font-size:18px}
-.participant-list, .stock-list{display:flex;flex-direction:column;gap:8px}
-.participant-item, .stock-item{
-background:#f8fafc;
-padding:12px;
-border-radius:8px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-.participant-actions, .stock-actions{display:flex;gap:6px}
-.market-status{
-display:inline-block;
-padding:6px 12px;
-border-radius:6px;
-font-weight:600;
-font-size:14px;
-}
-.market-status.running{background:#dcfce7;color:#16a34a}
-.market-status.stopped{background:#fee2e2;color:#ef4444}
-
-.modal{
-display:none;
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.5);
-justify-content:center;
-align-items:center;
-z-index:1000;
-}
-.modal.active{display:flex}
-.modal-content{
-background:var(--card);
-padding:24px;
-border-radius:16px;
-width:90%;
-max-width:500px;
-max-height:80vh;
-overflow-y:auto;
-}
-.modal-content h3{margin:0 0 16px 0}
-
-footer{text-align:center;margin-top:20px;color:#94a3b8;font-size:13px}
-
-/* small responsive */
-@media (max-width:880px){
-main{grid-template-columns:1fr}
-header{flex-direction:column;align-items:flex-start;gap:8px}
-}
-</style>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      color: #111;
+      text-align: center;
+      padding: 30px;
+    }
+    input, button, select {
+      margin: 5px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      cursor: pointer;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      transition: 0.3s;
+    }
+    button:hover { background-color: #1e40af; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px auto;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
+
 <body>
-<div class="container">
-
-<!-- Login Screen -->
-<div id="loginScreen" class="login-screen">
-<div class="login-box">
-<h2>Zenith Stock Exchange</h2>
-<div class="form-group">
-<label>User ID</label>
-<input type="text" id="loginUsername" placeholder="Enter your ID" />
-</div>
-<div class="form-group">
-<label>Password</label>
-<input type="password" id="loginPassword" placeholder="Enter password" />
-</div>
-<div class="form-group">
-<button class="primary" id="loginBtn">Login</button>
-</div>
-<div id="loginError" style="color:var(--red);text-align:center;margin-top:10px;display:none"></div>
-</div>
-</div>
-
-<!-- Main App (hidden until login) -->
-<div id="mainApp" style="display:none">
-
-<!-- Admin Panel (only for admin) -->
-<div id="adminPanel" style="display:none">
-<div class="admin-panel">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-<h2 style="margin:0">Admin Dashboard</h2>
-<button class="ghost" id="logoutBtn">Logout</button>
-</div>
-
-<!-- Market Control -->
-<div class="admin-section">
-<h3>Market Control</h3>
-<div style="display:flex;gap:12px;align-items:center">
-<span class="market-status" id="marketStatus">Running</span>
-<button class="success" id="startMarketBtn">Start Market</button>
-<button class="danger" id="stopMarketBtn">Stop Market</button>
-</div>
-</div>
-
-<!-- Participants Management -->
-<div class="admin-section">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-<h3 style="margin:0">Participants</h3>
-<button class="primary" id="addParticipantBtn">Add Participant</button>
-</div>
-<div class="participant-list" id="participantList"></div>
-</div>
-
-<!-- Stocks Management -->
-<div class="admin-section">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-<h3 style="margin:0">Stocks Configuration</h3>
-<button class="primary" id="addStockBtn">Add Stock</button>
-</div>
-<div class="stock-list" id="stockList"></div>
-</div>
-</div>
-</div>
-
-<!-- Participant View -->
-<div id="participantView" style="display:none">
-<header>
-<div>
-<h1>Zenith Stock Exchange</h1>
-<div class="small muted">Fake market — demo only</div>
-</div>
-
-<div class="meta">
-<div style="text-align:right">
-<div class="small muted">User</div>
-<div id="currentUser" style="font-weight:700"></div>
-</div>
-
-<div style="text-align:right;margin-left:8px">
-<div class="small muted">Market cap (sim)</div>
-<div id="marketCap" style="font-weight:700">₹0</div>
-</div>
-
-<div style="text-align:right;margin-left:8px">
-<div class="small muted">Cash</div>
-<div id="cash" style="font-weight:700">₹0</div>
-</div>
-
-<label class="small muted" style="margin-left:10px">Update</label>
-<select id="intervalSelect" title="Update interval">
-<option value="5000">5 seconds (demo)</option>
-<option value="60000">1 minute</option>
-<option value="300000">5 minutes</option>
-<option value="600000">10 minutes</option>
-</select>
-
-<button id="pauseBtn" class="ghost" style="margin-left:8px">Pause</button>
-<button class="ghost" id="logoutBtnParticipant" style="margin-left:6px">Logout</button>
-</div>
-</header>
-
-<main>
-<section>
-<div class="cards" id="cardsContainer"></div>
-
-<!-- Expanded chart area -->
-<div id="expandedArea" style="display:none;margin-top:16px" class="card">
-<div class="row" style="align-items:flex-start">
-<div>
-<div style="display:flex;align-items:center">
-<div id="expandedSymbol" class="symbol"></div>
-<div id="expandedName" class="name"></div>
-</div>
-<div id="expandedPrice" class="price"></div>
-<div id="expandedChange" class="small muted" style="margin-top:4px"></div>
-</div>
-
-<div style="width:360px">
-<canvas id="expandedChart" width="360" height="160"></canvas>
-</div>
-</div>
-
-<div class="expanded">
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-<div>
-<label class="small muted">Buy quantity</label><br/>
-<input id="buyQty" class="qty" type="number" min="1" value="10" />
-</div>
-
-<div>
-<label class="small muted">Sell quantity</label><br/>
-<input id="sellQty" class="qty" type="number" min="1" value="10" />
-</div>
-
-<div style="display:flex;gap:8px;align-items:center">
-<button id="buyBtn" class="btn-buy">Buy</button>
-<button id="sellBtn" class="btn-buy-secondary">Sell</button>
-</div>
-
-<div style="margin-left:auto" class="muted small">
-<span id="expandedVol">Vol 0</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-
-<aside>
-<div class="panel">
-<h3 style="margin:0 0 6px 0">My Investments</h3>
-
-<div style="margin-top:10px">
-<div class="small muted">Portfolio Value</div>
-<div id="portfolioValue" style="font-weight:700">₹0</div>
-</div>
-
-<div class="invest-list" id="investList"></div>
-</div>
-</aside>
-</main>
-
-<footer>
-Built for demo — not financial advice.
-</footer>
-</div>
-
-</div>
-
-<!-- Modals -->
-<div id="participantModal" class="modal">
-<div class="modal-content">
-<h3 id="participantModalTitle">Add Participant</h3>
-<div class="form-group">
-<label>User ID</label>
-<input type="text" id="modalParticipantId" />
-</div>
-<div class="form-group">
-<label>Password</label>
-<input type="password" id="modalParticipantPassword" />
-</div>
-<div class="form-group">
-<label>Starting Balance (₹)</label>
-<input type="number" id="modalParticipantBalance" value="1000000" />
-</div>
-<div style="display:flex;gap:8px;justify-content:flex-end">
-<button class="ghost" id="cancelParticipantBtn">Cancel</button>
-<button class="primary" id="saveParticipantBtn">Save</button>
-</div>
-</div>
-</div>
-
-<div id="stockModal" class="modal">
-<div class="modal-content">
-<h3 id="stockModalTitle">Add Stock</h3>
-<div class="form-group">
-<label>Symbol</label>
-<input type="text" id="modalStockSymbol" />
-</div>
-<div class="form-group">
-<label>Company Name</label>
-<input type="text" id="modalStockName" />
-</div>
-<div class="form-group">
-<label>Starting Price (₹)</label>
-<input type="number" id="modalStockPrice" value="100" step="0.01" />
-</div>
-<div style="display:flex;gap:8px;justify-content:flex-end">
-<button class="ghost" id="cancelStockBtn">Cancel</button>
-<button class="primary" id="saveStockBtn">Save</button>
-</div>
-</div>
-</div>
-
-</div>
-
-<script>
-/* -------------------------
-System Configuration & Auth
-------------------------- */
-
-const STORAGE_KEY = "zenith_multi_v1";
-const ADMIN_DEFAULT = {username: "admin", password: "admin123", role: "admin"};
-
-let systemState = {
-marketRunning: true,
-admin: ADMIN_DEFAULT,
-participants: [],
-stocks: [
-{ symbol: "ZFN", name: "Zenith Foods", price: 120.0 },
-{ symbol: "AER", name: "AeroNova", price: 430.5 },
-{ symbol: "BIQ", name: "BioQuanta", price: 85.25 },
-{ symbol: "CYR", name: "CyberYarn", price: 26.75 },
-{ symbol: "SOL", name: "Solara Energies", price: 210.0 },
-{ symbol: "NEX", name: "NexRetail", price: 58.4 },
-{ symbol: "MTR", name: "MetroDrive", price: 340.0 },
-{ symbol: "PIX", name: "PixelWorks", price: 14.6 },
-],
-companies: [], // runtime state
-intervalMs: 5000,
-running: true,
-};
-
-let currentUser = null;
-let editingParticipantIndex = null;
-let editingStockIndex = null;
-
-function randBetween(min,max){ return Math.random()*(max-min)+min }
-function formatINR(n){ return "₹" + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2}) }
-
-/* -------------------------
-Persistence
-------------------------- */
-
-function loadSystemState(){
-try{
-const raw = localStorage.getItem(STORAGE_KEY);
-if(raw){
-const parsed = JSON.parse(raw);
-systemState = {...systemState, ...parsed};
-}
-}catch(e){ console.warn("load failed",e) }
-initializeCompanies();
-}
-
-function saveSystemState(){
-const toSave = {
-marketRunning: systemState.marketRunning,
-admin: systemState.admin,
-participants: systemState.participants,
-stocks: systemState.stocks,
-intervalMs: systemState.intervalMs,
-};
-localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-}
-
-function initializeCompanies(){
-systemState.companies = systemState.stocks.map(s => ({
-...s,
-change: 0,
-history: Array.from({length:12}, () => s.price),
-volume: Math.floor(randBetween(1000,50000))
-}));
-}
-
-/* -------------------------
-Authentication
-------------------------- */
-
-function login(username, password){
-// Check admin
-if(username === systemState.admin.username && password === systemState.admin.password){
-currentUser = {username, role: "admin"};
-return true;
-}
-// Check participants
-const participant = systemState.participants.find(p => p.username === username && p.password === password);
-if(participant){
-if(!systemState.marketRunning){
-return "market_stopped";
-}
-currentUser = {username, role: "participant", data: participant};
-return true;
-}
-return false;
-}
-
-function logout(){
-currentUser = null;
-showLoginScreen();
-}
-
-/* -------------------------
-UI Navigation
-------------------------- */
-
-function showLoginScreen(){
-document.getElementById('loginScreen').style.display = 'flex';
-document.getElementById('mainApp').style.display = 'none';
-document.getElementById('loginUsername').value = '';
-document.getElementById('loginPassword').value = '';
-document.getElementById('loginError').style.display = 'none';
-stopTicker();
-}
-
-function showMainApp(){
-document.getElementById('loginScreen').style.display = 'none';
-document.getElementById('mainApp').style.display = 'block';
-if(currentUser.role === 'admin'){
-showAdminView();
-} else {
-showParticipantView();
-}
-}
-
-function showAdminView(){
-document.getElementById('adminPanel').style.display = 'block';
-document.getElementById('participantView').style.display = 'none';
-renderAdminDashboard();
-}
-
-function showParticipantView(){
-document.getElementById('adminPanel').style.display = 'none';
-document.getElementById('participantView').style.display = 'block';
-document.getElementById('currentUser').textContent = currentUser.username;
-renderParticipantView();
-startTicker();
-}
-
-/* -------------------------
-Admin Dashboard
-------------------------- */
-
-function renderAdminDashboard(){
-// Market status
-const statusEl = document.getElementById('marketStatus');
-if(systemState.marketRunning){
-statusEl.textContent = 'Running';
-statusEl.className = 'market-status running';
-} else {
-statusEl.textContent = 'Stopped';
-statusEl.className = 'market-status stopped';
-}
-
-// Participants
-const participantList = document.getElementById('participantList');
-participantList.innerHTML = '';
-if(systemState.participants.length === 0){
-participantList.innerHTML = '<div class="muted small">No participants yet.</div>';
-} else {
-systemState.participants.forEach((p, idx) => {
-const div = document.createElement('div');
-div.className = 'participant-item';
-div.innerHTML = `
-<div>
-<div style="font-weight:600">${p.username}</div>
-<div class="small muted">Balance: ${formatINR(p.cash)} | Holdings: ${p.investments.length}</div>
-</div>
-<div class="participant-actions">
-<button class="ghost" onclick="editParticipant(${idx})">Edit</button>
-<button class="danger" onclick="deleteParticipant(${idx})">Delete</button>
-</div>
-`;
-participantList.appendChild(div);
-});
-}
-
-// Stocks
-const stockList = document.getElementById('stockList');
-stockList.innerHTML = '';
-systemState.stocks.forEach((s, idx) => {
-const div = document.createElement('div');
-div.className = 'stock-item';
-div.innerHTML = `
-<div>
-<div style="font-weight:600">${s.symbol} - ${s.name}</div>
-<div class="small muted">Starting Price: ${formatINR(s.price)}</div>
-</div>
-<div class="stock-actions">
-<button class="ghost" onclick="editStock(${idx})">Edit</button>
-<button class="danger" onclick="deleteStock(${idx})">Delete</button>
-</div>
-`;
-stockList.appendChild(div);
-});
-}
-
-function startMarket(){
-systemState.marketRunning = true;
-saveSystemState();
-renderAdminDashboard();
-alert('Market started! Participants can now login and trade.');
-}
-
-function stopMarket(){
-systemState.marketRunning = false;
-saveSystemState();
-renderAdminDashboard();
-alert('Market stopped! Participants cannot login or trade.');
-}
-
-/* -------------------------
-Participant Management
-------------------------- */
-
-function addParticipant(){
-editingParticipantIndex = null;
-document.getElementById('participantModalTitle').textContent = 'Add Participant';
-document.getElementById('modalParticipantId').value = '';
-document.getElementById('modalParticipantPassword').value = '';
-document.getElementById('modalParticipantBalance').value = '1000000';
-document.getElementById('participantModal').classList.add('active');
-}
-
-function editParticipant(index){
-editingParticipantIndex = index;
-const p = systemState.participants[index];
-document.getElementById('participantModalTitle').textContent = 'Edit Participant';
-document.getElementById('modalParticipantId').value = p.username;
-document.getElementById('modalParticipantPassword').value = p.password;
-document.getElementById('modalParticipantBalance').value = p.cash;
-document.getElementById('participantModal').classList.add('active');
-}
-
-function saveParticipant(){
-const username = document.getElementById('modalParticipantId').value.trim();
-const password = document.getElementById('modalParticipantPassword').value;
-const cash = Number(document.getElementById('modalParticipantBalance').value);
-
-if(!username || !password){
-alert('Username and password are required');
-return;
-}
-
-if(username === 'admin'){
-alert('Cannot use "admin" as participant username');
-return;
-}
-
-// Check duplicate username (except when editing same user)
-const duplicate = systemState.participants.find((p, idx) => 
-p.username === username && idx !== editingParticipantIndex
-);
-if(duplicate){
-alert('Username already exists');
-return;
-}
-
-if(editingParticipantIndex !== null){
-// Edit existing
-systemState.participants[editingParticipantIndex].username = username;
-systemState.participants[editingParticipantIndex].password = password;
-systemState.participants[editingParticipantIndex].cash = cash;
-} else {
-// Add new
-systemState.participants.push({
-username,
-password,
-cash,
-investments: []
-});
-}
-
-saveSystemState();
-document.getElementById('participantModal').classList.remove('active');
-renderAdminDashboard();
-}
-
-function deleteParticipant(index){
-if(!confirm(`Delete participant ${systemState.participants[index].username}?`)) return;
-systemState.participants.splice(index, 1);
-saveSystemState();
-renderAdminDashboard();
-}
-
-/* -------------------------
-Stock Management
-------------------------- */
-
-function addStock(){
-editingStockIndex = null;
-document.getElementById('stockModalTitle').textContent = 'Add Stock';
-document.getElementById('modalStockSymbol').value = '';
-document.getElementById('modalStockName').value = '';
-document.getElementById('modalStockPrice').value = '100';
-document.getElementById('stockModal').classList.add('active');
-}
-
-function editStock(index){
-editingStockIndex = index;
-const s = systemState.stocks[index];
-document.getElementById('stockModalTitle').textContent = 'Edit Stock';
-document.getElementById('modalStockSymbol').value = s.symbol;
-document.getElementById('modalStockName').value = s.name;
-document.getElementById('modalStockPrice').value = s.price;
-document.getElementById('stockModal').classList.add('active');
-}
-
-function saveStock(){
-const symbol = document.getElementById('modalStockSymbol').value.trim().toUpperCase();
-const name = document.getElementById('modalStockName').value.trim();
-const price = Number(document.getElementById('modalStockPrice').value);
-
-if(!symbol || !name || price <= 0){
-alert('All fields are required and price must be positive');
-return;
-}
-
-// Check duplicate symbol (except when editing same stock)
-const duplicate = systemState.stocks.find((s, idx) => 
-s.symbol === symbol && idx !== editingStockIndex
-);
-if(duplicate){
-alert('Stock symbol already exists');
-return;
-}
-
-if(editingStockIndex !== null){
-// Edit existing
-systemState.stocks[editingStockIndex].symbol = symbol;
-systemState.stocks[editingStockIndex].name = name;
-systemState.stocks[editingStockIndex].price = price;
-} else {
-// Add new
-systemState.stocks.push({symbol, name, price});
-}
-
-saveSystemState();
-initializeCompanies();
-document.getElementById('stockModal').classList.remove('active');
-renderAdminDashboard();
-}
-
-function deleteStock(index){
-if(!confirm(`Delete stock ${systemState.stocks[index].symbol}?`)) return;
-systemState.stocks.splice(index, 1);
-saveSystemState();
-initializeCompanies();
-renderAdminDashboard();
-}
-
-/* -------------------------
-Participant Trading View
-------------------------- */
-
-const cardsContainer = document.getElementById("cardsContainer");
-const marketCapEl = document.getElementById("marketCap");
-const cashEl = document.getElementById("cash");
-const portfolioEl = document.getElementById("portfolioValue");
-const investListEl = document.getElementById("investList");
-const expandedArea = document.getElementById("expandedArea");
-const expandedSymbol = document.getElementById("expandedSymbol");
-const expandedName = document.getElementById("expandedName");
-const expandedPrice = document.getElementById("expandedPrice");
-const expandedChange = document.getElementById("expandedChange");
-const expandedVol = document.getElementById("expandedVol");
-const buyQtyInput = document.getElementById("buyQty");
-const sellQtyInput = document.getElementById("sellQty");
-const buyBtn = document.getElementById("buyBtn");
-const sellBtn = document.getElementById("sellBtn");
-const intervalSelect = document.getElementById("intervalSelect");
-const pauseBtn = document.getElementById("pauseBtn");
-
-let expandedSymbolSelected = null;
-let expandedChart = null;
-
-function calcMarketCap(){
-return systemState.companies.reduce((acc,c)=> acc + c.price * (1000000 + (c.symbol.charCodeAt(0)%5)*100000), 0);
-}
-
-function renderHeader(){
-marketCapEl.textContent = formatINR(calcMarketCap()/1e6) + "M";
-cashEl.textContent = formatINR(currentUser.data.cash);
-}
-
-function renderCards(){
-cardsContainer.innerHTML = "";
-systemState.companies.forEach((c, idx) => {
-const div = document.createElement("div");
-div.className = "card";
-div.dataset.symbol = c.symbol;
-
-const prev = c.history[c.history.length-2] ?? c.price;
-const pct = prev ? ((c.price - prev)/ (prev) * 100) : 0;
-
-div.innerHTML = `
-<div class="row">
-<div style="display:flex;align-items:center">
-<div class="symbol">${c.symbol}</div>
-<div class="name">${c.name}</div>
-</div>
-<div class="small muted">Vol ${c.volume.toLocaleString()}</div>
-</div>
-
-<div class="price">${formatINR(c.price)}</div>
-
-<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-<div class="${c.change >=0 ? 'small' : 'small'}" style="color:${c.change>=0? 'var(--green)':'var(--red)'};font-weight:600">
-${c.change>=0?'+':''}${c.change.toFixed(2)} (${pct.toFixed(2)}%)
-</div>
-<div style="margin-left:auto" class="spark">
-<canvas width="160" height="60" data-spark="${idx}"></canvas>
-</div>
-</div>
-`;
-
-div.addEventListener("click", ()=>{
-if(expandedSymbolSelected === c.symbol) {
-collapseExpanded();
-} else {
-openExpanded(c.symbol);
-}
-});
-
-cardsContainer.appendChild(div);
-
-const canvas = div.querySelector('canvas[data-spark]');
-drawSpark(canvas, c.history);
-});
-}
-
-function renderInvestments(){
-investListEl.innerHTML = "";
-if(currentUser.data.investments.length === 0){
-investListEl.innerHTML = `<div class="muted small" style="margin-top:8px">No holdings yet.</div>`;
-portfolioEl.textContent = formatINR(currentUser.data.cash);
-return;
-}
-
-let holdingsValue = 0;
-currentUser.data.investments.forEach((inv, i) => {
-const live = (systemState.companies.find(c=>c.symbol===inv.symbol)?.price) || inv.buyPrice;
-const item = document.createElement("div");
-item.className = "invest-item";
-
-const left = document.createElement("div");
-left.innerHTML = `<div style="font-weight:700">${inv.symbol} <span class="muted" style="font-weight:600">(${inv.qty} sh)</span></div>
-<div class="muted small">bought @ ${formatINR(inv.buyPrice)}</div>`;
-
-const right = document.createElement("div");
-const pnlEl = document.createElement("div");
-pnlEl.textContent = formatINR(live) + " ";
-pnlEl.style.marginRight="8px";
-const sellButton = document.createElement("button");
-sellButton.className = "ghost";
-sellButton.textContent = "Sell";
-sellButton.addEventListener("click", ()=> {
-sellInvestment(i);
-});
-
-right.appendChild(pnlEl);
-right.appendChild(sellButton);
-
-item.appendChild(left);
-item.appendChild(right);
-
-investListEl.appendChild(item);
-
-holdingsValue += live * inv.qty;
-});
-
-const portfolioValue = currentUser.data.cash + holdingsValue;
-portfolioEl.textContent = formatINR(portfolioValue);
-}
-
-function renderParticipantView(){
-intervalSelect.value = String(systemState.intervalMs);
-renderHeader();
-renderCards();
-renderInvestments();
-}
-
-/* -------------------------
-Charts
-------------------------- */
-
-function drawSpark(canvas, history){
-const ctx = canvas.getContext('2d');
-canvas.width = 160;
-canvas.height = 60;
-ctx.clearRect(0,0,canvas.width, canvas.height);
-if(!history || history.length===0) return;
-const data = history.map(v => Number(v));
-const min = Math.min(...data);
-const max = Math.max(...data);
-const range = (max - min) || 1;
-const pad = 4;
-ctx.beginPath();
-data.forEach((val,i)=>{
-const x = pad + i * ((canvas.width - pad*2)/(data.length-1 || 1));
-const y = canvas.height - pad - ((val - min)/range)*(canvas.height - pad*2);
-if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-});
-ctx.strokeStyle = '#38bdf8';
-ctx.lineWidth = 2;
-ctx.stroke();
-}
-
-function openExpanded(symbol){
-expandedSymbolSelected = symbol;
-const c = systemState.companies.find(x=>x.symbol===symbol);
-expandedSymbol.textContent = c.symbol;
-expandedName.textContent = c.name;
-expandedPrice.textContent = formatINR(c.price);
-expandedChange.textContent = `${c.change>=0?'+':''}${c.change.toFixed(2)} (${(((c.change)/(c.price - c.change))*100)||0 .toFixed(2)}%)`;
-expandedVol.textContent = `Vol ${c.volume.toLocaleString()}`;
-expandedArea.style.display = "block";
-
-buyQtyInput.value = 10;
-sellQtyInput.value = 10;
-
-drawExpandedChart(c.history, c.name);
-
-buyBtn.onclick = ()=> buyShares(symbol, Number(buyQtyInput.value||0));
-sellBtn.onclick = ()=> sellShares(symbol, Number(sellQtyInput.value||0));
-}
-
-function collapseExpanded(){
-expandedSymbolSelected = null;
-expandedArea.style.display = "none";
-if(expandedChart){ expandedChart.destroy(); expandedChart = null; }
-}
-
-function drawExpandedChart(history, label){
-const ctx = document.getElementById('expandedChart').getContext('2d');
-if(expandedChart) expandedChart.destroy();
-const data = history.map(v => Number(v));
-expandedChart = new Chart(ctx, {
-type: 'line',
-data: {
-labels: data.map((_,i)=>i+1),
-datasets: [{
-label: label,
-data: data,
-borderColor: '#0ea5e9',
-backgroundColor: 'rgba(14,165,233,0.12)',
-fill: true,
-tension: 0.25,
-pointRadius: 0
-}]
-},
-options: {
-responsive: true,
-maintainAspectRatio: false,
-scales: {
-x: { display:false },
-y: { beginAtZero:false }
-},
-plugins: { legend: { display: false } }
-}
-});
-}
-
-/* -------------------------
-Market tick
-------------------------- */
-
-function marketTick(){
-systemState.companies = systemState.companies.map(c=>{
-const volatility = 0.04;
-const pct = (Math.random()*2 - 1)*volatility;
-const newPrice = Math.max(0.01, c.price * (1 + pct));
-const change = newPrice - c.price;
-const newHistory = [...c.history.slice(1), Number(newPrice.toFixed(2))];
-const newVolume = c.volume + Math.floor(randBetween(100,20000));
-return {...c, price: Number(newPrice.toFixed(2)), change: Number(change.toFixed(2)), history: newHistory, volume: newVolume};
-});
-
-renderHeader();
-renderCards();
-renderInvestments();
-
-if(expandedSymbolSelected){
-const c = systemState.companies.find(x=>x.symbol===expandedSymbolSelected);
-if(c){
-expandedPrice.textContent = formatINR(c.price);
-expandedVol.textContent = `Vol ${c.volume.toLocaleString()}`;
-drawExpandedChart(c.history, c.name);
-} else {
-collapseExpanded();
-}
-}
-}
-
-/* -------------------------
-Buy / Sell logic
-------------------------- */
-
-function buyShares(symbol, qty){
-if(!qty || qty<=0){ alert("Enter valid quantity"); return; }
-const company = systemState.companies.find(c=>c.symbol===symbol);
-if(!company) return;
-const cost = company.price * qty;
-if(cost > currentUser.data.cash){ alert("Not enough cash"); return; }
-currentUser.data.cash -= cost;
-
-const existing = currentUser.data.investments.find(i=>i.symbol===symbol && i.buyPrice===company.price);
-if(existing){
-existing.qty += qty;
-} else {
-currentUser.data.investments.push({ symbol, qty, buyPrice: company.price, buyTime: Date.now() });
-}
-
-syncParticipantData();
-renderHeader();
-renderInvestments();
-alert(`Bought ${qty} ${symbol} @ ${formatINR(company.price)} — cost ${formatINR(cost)}`);
-}
-
-function sellShares(symbol, qty){
-if(!qty || qty<=0){ alert("Enter valid quantity"); return; }
-let remaining = qty;
-let totalProceeds = 0;
-
-for(let i = currentUser.data.investments.length-1; i>=0 && remaining>0; i--){
-const inv = currentUser.data.investments[i];
-if(inv.symbol !== symbol) continue;
-const sellQty = Math.min(inv.qty, remaining);
-const livePrice = (systemState.companies.find(c=>c.symbol===symbol)?.price) || inv.buyPrice;
-totalProceeds += sellQty * livePrice;
-inv.qty -= sellQty;
-remaining -= sellQty;
-if(inv.qty === 0) currentUser.data.investments.splice(i,1);
-}
-
-if(remaining>0){
-alert("You don't hold that many shares to sell.");
-return;
-}
-
-currentUser.data.cash += totalProceeds;
-syncParticipantData();
-renderHeader();
-renderInvestments();
-alert(`Sold ${qty} ${symbol} for ${formatINR(totalProceeds)}.`);
-}
-
-function sellInvestment(index){
-const inv = currentUser.data.investments[index];
-if(!inv) return;
-const company = systemState.companies.find(c=>c.symbol===inv.symbol);
-const live = company ? company.price : inv.buyPrice;
-const proceeds = live * inv.qty;
-const profitLoss = proceeds - (inv.buyPrice * inv.qty);
-
-currentUser.data.investments.splice(index,1);
-currentUser.data.cash += proceeds;
-syncParticipantData();
-renderHeader();
-renderInvestments();
-alert(`${profitLoss>=0 ? 'Profit' : 'Loss'}: ${formatINR(profitLoss)} on ${inv.symbol}`);
-}
-
-function syncParticipantData(){
-const pIndex = systemState.participants.findIndex(p => p.username === currentUser.username);
-if(pIndex !== -1){
-systemState.participants[pIndex] = currentUser.data;
-saveSystemState();
-}
-}
-
-/* -------------------------
-Controls
-------------------------- */
-
-intervalSelect.addEventListener('change', (e)=>{
-systemState.intervalMs = Number(e.target.value);
-saveSystemState();
-restartTicker();
-});
-
-pauseBtn.addEventListener('click', ()=>{
-systemState.running = !systemState.running;
-pauseBtn.textContent = systemState.running ? 'Pause' : 'Resume';
-if(systemState.running) restartTicker(); else stopTicker();
-});
-
-/* -------------------------
-Ticker control
-------------------------- */
-
-let tickerHandle = null;
-
-function startTicker(){
-stopTicker();
-tickerHandle = setInterval(()=>{ if(systemState.running) marketTick(); }, systemState.intervalMs);
-}
-
-function stopTicker(){
-if(tickerHandle) { clearInterval(tickerHandle); tickerHandle = null; }
-}
-
-function restartTicker(){ startTicker(); }
-
-/* -------------------------
-Event Handlers
-------------------------- */
-
-document.getElementById('loginBtn').addEventListener('click', ()=>{
-const username = document.getElementById('loginUsername').value.trim();
-const password = document.getElementById('loginPassword').value;
-const result = login(username, password);
-const errorEl = document.getElementById('loginError');
-
-if(result === true){
-errorEl.style.display = 'none';
-showMainApp();
-} else if(result === 'market_stopped'){
-errorEl.textContent = 'Market is currently stopped. Please try again later.';
-errorEl.style.display = 'block';
-} else {
-errorEl.textContent = 'Invalid username or password';
-errorEl.style.display = 'block';
-}
-});
-
-document.getElementById('logoutBtn').addEventListener('click', logout);
-document.getElementById('logoutBtnParticipant').addEventListener('click', logout);
-
-document.getElementById('startMarketBtn').addEventListener('click', startMarket);
-document.getElementById('stopMarketBtn').addEventListener('click', stopMarket);
-
-document.getElementById('addParticipantBtn').addEventListener('click', addParticipant);
-document.getElementById('saveParticipantBtn').addEventListener('click', saveParticipant);
-document.getElementById('cancelParticipantBtn').addEventListener('click', ()=>{
-document.getElementById('participantModal').classList.remove('active');
-});
-
-document.getElementById('addStockBtn').addEventListener('click', addStock);
-document.getElementById('saveStockBtn').addEventListener('click', saveStock);
-document.getElementById('cancelStockBtn').addEventListener('click', ()=>{
-document.getElementById('stockModal').classList.remove('active');
-});
-
-// Make functions global for onclick handlers
-window.editParticipant = editParticipant;
-window.deleteParticipant = deleteParticipant;
-window.editStock = editStock;
-window.deleteStock = deleteStock;
-
-/* -------------------------
-Initialize
-------------------------- */
-
-function init(){
-loadSystemState();
-showLoginScreen();
-}
-
-init();
-
-</script>
+  <h1>📈 Zenith Stock Exchange</h1>
+
+  <!-- Auth Section -->
+  <div class="card" id="auth-section">
+    <h2>Login / Signup</h2>
+    <input type="email" id="email" placeholder="Enter email" /><br>
+    <input type="password" id="password" placeholder="Enter password" /><br>
+    <button id="signup-btn">Sign Up</button>
+    <button id="login-btn">Log In</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="card" id="dashboard" style="display:none;">
+    <h2>Welcome to Zenith!</h2>
+    <button id="logout-btn">Log Out</button>
+
+    <h3>Available Stocks</h3>
+    <select id="stock-select"></select><br>
+    <input type="number" id="shares" placeholder="Shares" />
+    <button id="buy-btn">Buy</button>
+    <button id="sell-btn">Sell</button>
+
+    <h3>Your Portfolio</h3>
+    <ul id="portfolio-list"></ul>
+  </div>
+
+  <script>
+    // --- SUPABASE SETUP ---
+    const SUPABASE_URL = "https://tvgxsmovaysuygqrqbng.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2Z3hzbW92YXlzdXlncXJxYm5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3OTU4NTIsImV4cCI6MjA3NTM3MTg1Mn0.LQVAlqFLROlObf9wHDcfqmYiimSLMs6JFa00Rxn1flU";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const authSection = document.getElementById("auth-section");
+    const dashboard = document.getElementById("dashboard");
+    const stockSelect = document.getElementById("stock-select");
+    const portfolioList = document.getElementById("portfolio-list");
+
+    // --- AUTH ---
+    document.getElementById("signup-btn").onclick = async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) alert(error.message);
+      else alert("Signup successful! Check your email to confirm.");
+    };
+
+    document.getElementById("login-btn").onclick = async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) alert(error.message);
+      else {
+        alert("Login successful!");
+        showDashboard();
+      }
+    };
+
+    document.getElementById("logout-btn").onclick = async () => {
+      await supabase.auth.signOut();
+      authSection.style.display = "block";
+      dashboard.style.display = "none";
+    };
+
+    // --- INITIAL CHECK ---
+    window.addEventListener("DOMContentLoaded", async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) showDashboard();
+    });
+
+    // --- MAIN DASHBOARD ---
+    async function showDashboard() {
+      authSection.style.display = "none";
+      dashboard.style.display = "block";
+      await loadStocks();
+      await loadPortfolio();
+    }
+
+    // --- LOAD STOCKS ---
+    async function loadStocks() {
+      const { data: stocks, error } = await supabase.from("stocks").select("*");
+      if (error) {
+        console.error(error);
+        return;
+      }
+      stockSelect.innerHTML = "";
+      stocks.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.symbol} — ₹${s.price}`;
+        stockSelect.appendChild(opt);
+      });
+    }
+
+    // --- BUY STOCK ---
+    document.getElementById("buy-btn").onclick = async () => {
+      const stockId = stockSelect.value;
+      const qty = parseInt(document.getElementById("shares").value);
+      if (!qty || qty <= 0) return alert("Enter valid shares.");
+
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      const { data: stockData } = await supabase.from("stocks").select("*").eq("id", stockId).single();
+      const price = stockData.price;
+
+      // Record transaction
+      await supabase.from("transactions").insert([{
+        user_id: user.id,
+        stock_id: stockId,
+        type: "BUY",
+        quantity: qty,
+        price
+      }]);
+
+      // Update user_stocks table
+      const existing = await supabase.from("user_stocks")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("stock_id", stockId)
+        .single();
+
+      if (existing.data) {
+        const newQty = existing.data.shares + qty;
+        await supabase.from("user_stocks")
+          .update({ shares: newQty })
+          .eq("id", existing.data.id);
+      } else {
+        await supabase.from("user_stocks")
+          .insert([{ user_id: user.id, stock_id: stockId, shares: qty }]);
+      }
+
+      alert("Stock purchased!");
+      loadPortfolio();
+    };
+
+    // --- SELL STOCK ---
+    document.getElementById("sell-btn").onclick = async () => {
+      const stockId = stockSelect.value;
+      const qty = parseInt(document.getElementById("shares").value);
+      if (!qty || qty <= 0) return alert("Enter valid shares.");
+
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      const existing = await supabase.from("user_stocks")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("stock_id", stockId)
+        .single();
+
+      if (!existing.data || existing.data.shares < qty)
+        return alert("Not enough shares to sell.");
+
+      const { data: stockData } = await supabase.from("stocks").select("*").eq("id", stockId).single();
+      const price = stockData.price;
+
+      // Record transaction
+      await supabase.from("transactions").insert([{
+        user_id: user.id,
+        stock_id: stockId,
+        type: "SELL",
+        quantity: qty,
+        price
+      }]);
+
+      // Update user_stocks
+      const newQty = existing.data.shares - qty;
+      await supabase.from("user_stocks")
+        .update({ shares: newQty })
+        .eq("id", existing.data.id);
+
+      alert("Stock sold!");
+      loadPortfolio();
+    };
+
+    // --- LOAD PORTFOLIO ---
+    async function loadPortfolio() {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      const { data, error } = await supabase
+        .from("user_stocks")
+        .select("shares, stock_id, stocks(name, symbol, price)")
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      portfolioList.innerHTML = "";
+      if (!data.length) {
+        portfolioList.innerHTML = "<li>No holdings yet</li>";
+        return;
+      }
+
+      data.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = `${item.stocks.symbol} — ${item.shares} shares @ ₹${item.stocks.price}`;
+        portfolioList.appendChild(li);
+      });
+    }
+  </script>
 </body>
 </html>
