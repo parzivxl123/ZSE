@@ -4,44 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Zenith Stock Exchange</title>
-
-  <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f5f7fa;
-      color: #111;
-      text-align: center;
-      padding: 30px;
-    }
-    input, button, select {
-      margin: 5px;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      cursor: pointer;
-      background-color: #2563eb;
-      color: white;
-      border: none;
-      transition: 0.3s;
-    }
-    button:hover { background-color: #1e40af; }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 20px auto;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
+    body { font-family:'Segoe UI', sans-serif; background:#f5f7fa; color:#111; text-align:center; padding:30px; }
+    input, button, select { margin:5px; padding:8px; border-radius:6px; border:1px solid #ccc; }
+    button { cursor:pointer; background-color:#2563eb; color:white; border:none; transition:0.3s; }
+    button:hover { background-color:#1e40af; }
+    .card { background:white; border-radius:12px; padding:20px; margin:20px auto; width:90%; max-width:500px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+    #admin-panel { margin-top:20px; display:none; }
   </style>
 </head>
-
 <body>
   <h1>📈 Zenith Stock Exchange</h1>
 
@@ -67,6 +39,11 @@
 
     <h3>Your Portfolio</h3>
     <ul id="portfolio-list"></ul>
+
+    <div id="admin-panel">
+      <h3>Admin Panel</h3>
+      <button onclick="alert('Admin actions here')">Manage Stocks</button>
+    </div>
   </div>
 
   <script>
@@ -79,6 +56,8 @@
     const dashboard = document.getElementById("dashboard");
     const stockSelect = document.getElementById("stock-select");
     const portfolioList = document.getElementById("portfolio-list");
+    const adminPanel = document.getElementById("admin-panel");
+    let isAdmin = false;
 
     // --- AUTH ---
     document.getElementById("signup-btn").onclick = async () => {
@@ -96,6 +75,7 @@
       if (error) alert(error.message);
       else {
         alert("Login successful!");
+        await checkAdmin(data.user);
         showDashboard();
       }
     };
@@ -104,12 +84,33 @@
       await supabase.auth.signOut();
       authSection.style.display = "block";
       dashboard.style.display = "none";
+      adminPanel.style.display = "none";
     };
+
+    // --- CHECK IF ADMIN ---
+    async function checkAdmin(user) {
+      const { data, error } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+      if (data) {
+        isAdmin = true;
+        adminPanel.style.display = "block";
+        alert("You are logged in as Admin!");
+      } else {
+        isAdmin = false;
+        adminPanel.style.display = "none";
+      }
+    }
 
     // --- INITIAL CHECK ---
     window.addEventListener("DOMContentLoaded", async () => {
       const { data } = await supabase.auth.getUser();
-      if (data.user) showDashboard();
+      if (data.user) {
+        await checkAdmin(data.user);
+        showDashboard();
+      }
     });
 
     // --- MAIN DASHBOARD ---
@@ -123,10 +124,7 @@
     // --- LOAD STOCKS ---
     async function loadStocks() {
       const { data: stocks, error } = await supabase.from("stocks").select("*");
-      if (error) {
-        console.error(error);
-        return;
-      }
+      if (error) { console.error(error); return; }
       stockSelect.innerHTML = "";
       stocks.forEach(s => {
         const opt = document.createElement("option");
@@ -141,39 +139,18 @@
       const stockId = stockSelect.value;
       const qty = parseInt(document.getElementById("shares").value);
       if (!qty || qty <= 0) return alert("Enter valid shares.");
-
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-
       const { data: stockData } = await supabase.from("stocks").select("*").eq("id", stockId).single();
       const price = stockData.price;
-
-      // Record transaction
-      await supabase.from("transactions").insert([{
-        user_id: user.id,
-        stock_id: stockId,
-        type: "BUY",
-        quantity: qty,
-        price
-      }]);
-
-      // Update user_stocks table
-      const existing = await supabase.from("user_stocks")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("stock_id", stockId)
-        .single();
-
+      await supabase.from("transactions").insert([{ user_id: user.id, stock_id: stockId, type: "BUY", quantity: qty, price }]);
+      const existing = await supabase.from("user_stocks").select("*").eq("user_id", user.id).eq("stock_id", stockId).single();
       if (existing.data) {
         const newQty = existing.data.shares + qty;
-        await supabase.from("user_stocks")
-          .update({ shares: newQty })
-          .eq("id", existing.data.id);
+        await supabase.from("user_stocks").update({ shares: newQty }).eq("id", existing.data.id);
       } else {
-        await supabase.from("user_stocks")
-          .insert([{ user_id: user.id, stock_id: stockId, shares: qty }]);
+        await supabase.from("user_stocks").insert([{ user_id: user.id, stock_id: stockId, shares: qty }]);
       }
-
       alert("Stock purchased!");
       loadPortfolio();
     };
@@ -183,37 +160,15 @@
       const stockId = stockSelect.value;
       const qty = parseInt(document.getElementById("shares").value);
       if (!qty || qty <= 0) return alert("Enter valid shares.");
-
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-
-      const existing = await supabase.from("user_stocks")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("stock_id", stockId)
-        .single();
-
-      if (!existing.data || existing.data.shares < qty)
-        return alert("Not enough shares to sell.");
-
+      const existing = await supabase.from("user_stocks").select("*").eq("user_id", user.id).eq("stock_id", stockId).single();
+      if (!existing.data || existing.data.shares < qty) return alert("Not enough shares to sell.");
       const { data: stockData } = await supabase.from("stocks").select("*").eq("id", stockId).single();
       const price = stockData.price;
-
-      // Record transaction
-      await supabase.from("transactions").insert([{
-        user_id: user.id,
-        stock_id: stockId,
-        type: "SELL",
-        quantity: qty,
-        price
-      }]);
-
-      // Update user_stocks
+      await supabase.from("transactions").insert([{ user_id: user.id, stock_id: stockId, type: "SELL", quantity: qty, price }]);
       const newQty = existing.data.shares - qty;
-      await supabase.from("user_stocks")
-        .update({ shares: newQty })
-        .eq("id", existing.data.id);
-
+      await supabase.from("user_stocks").update({ shares: newQty }).eq("id", existing.data.id);
       alert("Stock sold!");
       loadPortfolio();
     };
@@ -222,23 +177,10 @@
     async function loadPortfolio() {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-
-      const { data, error } = await supabase
-        .from("user_stocks")
-        .select("shares, stock_id, stocks(name, symbol, price)")
-        .eq("user_id", user.id);
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
+      const { data, error } = await supabase.from("user_stocks").select("shares, stock_id, stocks(name, symbol, price)").eq("user_id", user.id);
+      if (error) { console.error(error); return; }
       portfolioList.innerHTML = "";
-      if (!data.length) {
-        portfolioList.innerHTML = "<li>No holdings yet</li>";
-        return;
-      }
-
+      if (!data.length) { portfolioList.innerHTML = "<li>No holdings yet</li>"; return; }
       data.forEach(item => {
         const li = document.createElement("li");
         li.textContent = `${item.stocks.symbol} — ${item.shares} shares @ ₹${item.stocks.price}`;
@@ -247,4 +189,4 @@
     }
   </script>
 </body>
-</html>
+</html>K
