@@ -1,6 +1,6 @@
 // --- Supabase connection ---
-const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-const SUPABASE_KEY = "YOUR-ANON-PUBLIC-KEY";
+const SUPABASE_URL = "https://tvgxsmovaysuygqrqbng.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2Z3hzbW92YXlzdXlncXJxYm5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3OTU4NTIsImV4cCI6MjA3NTM3MTg1Mn0.LQVAlqFLROlObf9wHDcfqmYiimSLMs6JFa00Rxn1flU";
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- Auth logic ---
